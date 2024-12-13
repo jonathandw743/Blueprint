@@ -214,6 +214,57 @@ local function restore_sprite(blueprint)
     align_sprite(blueprint, nil, true)
 end
 
+local function is_blueprint(card)
+    return card and card.config and card.config.center and card.config.center.key == 'j_blueprint'
+end
+
+local function is_brainstorm(card)
+    return card and card.config and card.config.center and card.config.center.key == 'j_brainstorm'
+end
+
+-- mapping from index in G.jokers.cards to the index in G.jokers.cards to display
+-- an example with blueprint at index 2 would be [1, 3, 3, 4, 5]
+-- an example with a blueprint and brainstorm at indices 3 and 4 would be [1, 2, 1, 4, 5] if use_brainstorm_logic is true
+-- use_brainstorm_logic determines whether or not brainstorms are followed
+local function joker_mapping(joker_cards)
+    local mapping = {}
+    for i = 1, #joker_cards do
+        local j = i
+        -- step through blueprints until the end of the jokers, a debuffed joker, or a non-blueprint is met
+        while true do
+            if j > #joker_cards or joker_cards[j].debuff or not joker_cards[j].config.center.blueprint_compat then
+                j = i
+                break
+            end
+            if not is_blueprint(joker_cards[j]) then
+                break
+            end
+            j = j + 1
+        end
+        -- brainstorm step
+        if is_brainstorm(joker_cards[j]) then
+            j = 1
+        end
+        -- step through blueprints again in the same way
+        while true do
+            if j > #joker_cards or joker_cards[j].debuff or not joker_cards[j].config.center.blueprint_compat then
+                j = i
+                break
+            end
+            if not is_blueprint(joker_cards[j]) then
+                break
+            end
+            j = j + 1
+        end
+        -- if a brainstorm has been reached here, we're in an infinite loop of blueprints and brainstorms
+        if is_brainstorm(joker_cards[j]) then
+            j = i
+        end
+        table.insert(mapping, j)
+    end
+    return mapping
+end
+
 return function ()
 
 
@@ -231,13 +282,6 @@ function Sprite:reset()
     return sprite_reset(self)
 end
 
-local function is_blueprint(card)
-    return card and card.config and card.config.center and card.config.center.key == 'j_blueprint'
-end
-
-local function is_brainstorm(card)
-    return card and card.config and card.config.center and card.config.center.key == 'j_brainstorm'
-end
 
 local cardarea_align_cards = CardArea.align_cards
 function CardArea:align_cards()
