@@ -226,7 +226,7 @@ end
 -- an example with blueprint at index 2 would be [1, 3, 3, 4, 5]
 -- an example with a blueprint and brainstorm at indices 3 and 4 would be [1, 2, 1, 4, 5] if use_brainstorm_logic is true
 -- use_brainstorm_logic determines whether or not brainstorms are followed
-local function joker_mapping(joker_cards)
+local function create_joker_mapping(joker_cards)
     local mapping = {}
     for i = 1, #joker_cards do
         local j = i
@@ -287,62 +287,18 @@ local cardarea_align_cards = CardArea.align_cards
 function CardArea:align_cards()
     local ret = cardarea_align_cards(self)
 
-    if self == G.jokers then
-        local previous_joker = nil
-        local current_joker = nil
-        for i = #G.jokers.cards, 1, -1  do
-            current_joker = G.jokers.cards[i]
-            if is_blueprint(current_joker) then
-                if use_brainstorm_logic and is_brainstorm(previous_joker) then
-                    if use_debuff_logic and previous_joker.debuff then
-                        -- Brainstorm is debuffed, so it isn't copying leftmost
-                    else
-                        previous_joker = nil
-                        local index = 1
-                        local max = #G.jokers.cards
-                        while index <= max do
-                            local current = G.jokers.cards[index]
-                            if not current or current.debuff then
-                                break
-                            end
+    if self ~= G.jokers then return ret end
 
-                            if is_blueprint(current) then
-                                index = index + 1
-                            elseif is_brainstorm(current) then
-                                break
-                            else
-                                previous_joker = current
-                                break
-                            end
-                        end
-                    end
-                end
-                local should_copy = previous_joker and previous_joker.config.center.blueprint_compat and not current_joker.states.drag.is and (copy_when_highlighted or not current_joker.highlighted)
-
-                if use_debuff_logic then
-                    if should_copy and (current_joker.debuff or previous_joker.debuff) then
-                        -- Copied card is debuffed, so shouldn't copy
-                        should_copy = false
-                    end
-
-                    -- current joker is blueprint. it is debuffed. so blueprints to the left aren't copying anything
-                    if current_joker.debuff then
-                        previous_joker = nil
-                    end
-                end
-
-                if should_copy then
-                    blueprint_sprite(current_joker, previous_joker)
-                else
-                    restore_sprite(current_joker)
-                end
-            end
-            if not (current_joker.config.center.key == 'j_blueprint') then
-                previous_joker = current_joker
-            end
+    local joker_mapping = create_joker_mapping(G.jokers.cards)
+    
+    for original_index, mapped_to_index in pairs(joker_mapping) do
+        if original_index ~= mapped_to_index then
+            blueprint_sprite(G.jokers.cards[original_index], G.jokers.cards[mapped_to_index])
+        else
+            restore_sprite(G.jokers.cards[original_index])
         end
-
     end
+
 
     return ret
 end
