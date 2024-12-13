@@ -12,6 +12,12 @@ name = "blueprint.shader"
 
 [[patches]]
 [patches.module]
+source = "assets/shaders/brainstorm.lua"
+before = "game.lua"
+name = "brainstorm.shader"
+
+[[patches]]
+[patches.module]
 source = "core/core.lua"
 before = "main.lua"
 name = "blueprint.core"
@@ -38,6 +44,7 @@ position = "before"
 payload = '''
 
 G.SHADERS['blueprint_shader'] = love.graphics.newShader(require "blueprint.shader")
+G.SHADERS['brainstorm_shader'] = love.graphics.newShader(require "brainstorm.shader")
 '''
 match_indent = true
 

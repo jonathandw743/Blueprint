@@ -53,7 +53,7 @@ canvas_background_color = {
     0
 }
 
-local function process_texture(image)
+local function process_texture_blueprint(image)
     local h, w = image:getDimensions()
     local canvas = love.graphics.newCanvas(h, w, {type = '2d', readable = true})
 
@@ -101,6 +101,54 @@ local function process_texture(image)
     return canvas
 end
 
+local function process_texture_brainstorm(image)
+    local h, w = image:getDimensions()
+    local canvas = love.graphics.newCanvas(h, w, {type = '2d', readable = true})
+
+    love.graphics.push()
+    
+    
+    
+    local oldCanvas = love.graphics.getCanvas()
+    --local old_filter1, old_filter2 = image:getFilter()
+    --local old_filter11, old_filter22 = love.graphics.getDefaultFilter()
+    
+    -- I dont think changing filter does anything.. the image still looks blurry
+    --image:setFilter("nearest", "nearest")
+    --canvas:setFilter("nearest", "nearest")
+    --love.graphics.setDefaultFilter("nearest", "nearest")
+    love.graphics.setCanvas( canvas )
+    love.graphics.clear(canvas_background_color)
+    
+    love.graphics.setColor(1, 1, 1, 1)
+
+    G.SHADERS['brainstorm_shader']:send('inverted', inverted_colors)
+    G.SHADERS['brainstorm_shader']:send('lightness_offset', lightness_offset)
+    G.SHADERS['brainstorm_shader']:send('mode', coloring_mode)
+    G.SHADERS['brainstorm_shader']:send('expo', power)
+    love.graphics.setShader( G.SHADERS['brainstorm_shader'] )
+    
+    -- Draw image with brainstorm shader on new canvas
+    love.graphics.draw( image )
+
+
+    love.graphics.setShader()
+    love.graphics.setCanvas(oldCanvas)
+    --image:setFilter(old_filter1, old_filter2)
+    --canvas:setFilter(image:getFilter())
+    --love.graphics.setDefaultFilter(old_filter11, old_filter22)
+
+    love.graphics.pop()
+
+    --local fileData = canvas:newImageData():encode('png', 'imblueeeeeedabudeedabudai.png')
+
+    if true then
+        return love.graphics.newImage(canvas:newImageData()) --, {mipmaps = true, dpiscale = G.SETTINGS.GRAPHICS.texture_scaling}
+    end
+
+    return canvas
+end
+
 local function blueprint_atlas(atlas)
     local blueprinted = atlas.."_blueprinted"
 
@@ -111,10 +159,26 @@ local function blueprint_atlas(atlas)
         G.ASSET_ATLAS[blueprinted].type = G.ASSET_ATLAS[atlas].type
         G.ASSET_ATLAS[blueprinted].px = G.ASSET_ATLAS[atlas].px
         G.ASSET_ATLAS[blueprinted].py = G.ASSET_ATLAS[atlas].py
-        G.ASSET_ATLAS[blueprinted].image = process_texture(G.ASSET_ATLAS[atlas].image)
+        G.ASSET_ATLAS[blueprinted].image = process_texture_blueprint(G.ASSET_ATLAS[atlas].image)
     end
 
     return G.ASSET_ATLAS[blueprinted]
+end
+
+local function brainstorm_atlas(atlas)
+    local brainstormed = atlas.."_brainstormed"
+
+    if not G.ASSET_ATLAS[brainstormed] then
+        G.ASSET_ATLAS[brainstormed] = {}
+        G.ASSET_ATLAS[brainstormed].brainstorm = true
+        G.ASSET_ATLAS[brainstormed].name = G.ASSET_ATLAS[atlas].name
+        G.ASSET_ATLAS[brainstormed].type = G.ASSET_ATLAS[atlas].type
+        G.ASSET_ATLAS[brainstormed].px = G.ASSET_ATLAS[atlas].px
+        G.ASSET_ATLAS[brainstormed].py = G.ASSET_ATLAS[atlas].py
+        G.ASSET_ATLAS[brainstormed].image = process_texture_brainstorm(G.ASSET_ATLAS[atlas].image)
+    end
+
+    return G.ASSET_ATLAS[brainstormed]
 end
 
 local function equal_sprites(first, second)
@@ -189,6 +253,53 @@ local function blueprint_sprite(blueprint, card)
     --    blueprint.children.floating_sprite2.states.click.can = false
     --end
     align_sprite(blueprint, card)
+end
+
+local function brainstorm_sprite(brainstorm, card)
+    if equal_sprites(brainstorm.children.center, card.children.center) then
+        if card.children.floating_sprite and not equal_sprites(brainstorm.children.floating_sprite, card.children.floating_sprite) then
+            -- blueprinted card has floating sprite, and floating sprites aren't equal
+            -- need to update!
+        else
+            return
+        end
+    end
+
+    -- Not copying any other joker's sprite at the moment. Cache current sprite before updating
+    if not brainstorm.blueprint_sprite_copy then
+        brainstorm.blueprint_sprite_copy = brainstorm.children.center
+    end
+    brainstorm.blueprint_copy_key = card.config.center.key
+
+    -- Make sure to remove floating sprite before applying new one
+    if brainstorm.children.floating_sprite then
+        brainstorm.children.floating_sprite:remove()
+        brainstorm.children.floating_sprite = nil
+    end
+
+    align_sprite(brainstorm, nil, true)
+
+    brainstorm.children.center = Sprite(brainstorm.T.x, brainstorm.T.y, brainstorm.T.w, brainstorm.T.h, brainstorm_atlas(card.children.center.atlas.name), card.children.center.sprite_pos)
+    brainstorm.children.center.states.hover = brainstorm.states.hover
+    brainstorm.children.center.states.click = brainstorm.states.click
+    brainstorm.children.center.states.drag = brainstorm.states.drag
+    brainstorm.children.center.states.collide.can = false
+    brainstorm.children.center:set_role({major = brainstorm, role_type = 'Glued', draw_major = brainstorm})
+
+    if card.children.floating_sprite then
+        brainstorm.children.floating_sprite = Sprite(brainstorm.T.x, brainstorm.T.y, brainstorm.T.w, brainstorm.T.h, brainstorm_atlas(card.children.floating_sprite.atlas.name), card.children.floating_sprite.sprite_pos)
+        brainstorm.children.floating_sprite.role.draw_major = brainstorm
+        brainstorm.children.floating_sprite.states.hover.can = false
+        brainstorm.children.floating_sprite.states.click.can = false
+    end
+
+    --if card.children.floating_sprite2 then
+    --    blueprint.children.floating_sprite2 = Sprite(blueprint.T.x, blueprint.T.y, blueprint.T.w, blueprint.T.h, G.ASSET_ATLAS[card.children.floating_sprite2.atlas.name], card.children.floating_sprite2.sprite_pos)
+    --    blueprint.children.floating_sprite2.role.draw_major = blueprint
+    --    blueprint.children.floating_sprite2.states.hover.can = false
+    --    blueprint.children.floating_sprite2.states.click.can = false
+    --end
+    align_sprite(brainstorm, card)
 end
 
 local function restore_sprite(blueprint)
@@ -293,7 +404,12 @@ function CardArea:align_cards()
     
     for original_index, mapped_to_index in pairs(joker_mapping) do
         if original_index ~= mapped_to_index then
-            blueprint_sprite(G.jokers.cards[original_index], G.jokers.cards[mapped_to_index])
+            if is_blueprint(G.jokers.cards[original_index]) then
+                blueprint_sprite(G.jokers.cards[original_index], G.jokers.cards[mapped_to_index])
+            end
+            if is_brainstorm(G.jokers.cards[original_index]) then
+                brainstorm_sprite(G.jokers.cards[original_index], G.jokers.cards[mapped_to_index])
+            end
         else
             restore_sprite(G.jokers.cards[original_index])
         end
