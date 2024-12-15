@@ -12,7 +12,7 @@ name = "blueprint.shader"
 
 [[patches]]
 [patches.module]
-source = "assets/shaders/brainstorm.lua"
+source = "assets/shaders/brainstorm.glsl"
 before = "game.lua"
 name = "brainstorm.shader"
 
