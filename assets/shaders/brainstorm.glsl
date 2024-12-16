@@ -1,4 +1,5 @@
 return [[
+
 #pragma language glsl3
 
 #if __VERSION__ > 100 || defined(GL_FRAGMENT_PRECISION_HIGH)
@@ -15,6 +16,8 @@ return [[
 // 3 = exponent
 // extern PRECISION float mode;
 // extern PRECISION float expo;
+
+// uniform sampler2D blank_brainstorm;
 
 // cosine based palette, 4 vec3 params
 vec3 palette( float t, vec3 a, vec3 b, vec3 c, vec3 d )
@@ -33,7 +36,7 @@ float lightness(vec4 c)
 }
 
 //  Function from Iñigo Quiles
-//  www.iquilezles.org/www/articles/functions/functions.htm
+//  https://iquilezles.org/articles/functions/
 float parabola( float x, float k ){
     return pow( 4.0*x*(1.0-x), k );
 }
